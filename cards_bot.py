@@ -39,6 +39,11 @@ class WebhookServer(object):
 
 
 @bot.message_handler(commands=['random'])
+def random_command(message):
+    get_random_question(message)
+
+
+@bot.message_handler(func=lambda message: message.text == 'Get random question')
 def get_random_question(message):
     card_id, front = dao.get_random_question()
     global last_id
@@ -50,7 +55,7 @@ def get_random_question(message):
 
 @bot.message_handler(func=lambda message: message.text == 'Check answer')
 def handle_message(message):
-    markup = types.ReplyKeyboardRemove(selective=False)
+    markup = get_random_question_markup()
     if last_id is not None:
         back = dao.get_card_back_by_id(last_id)
         bot.send_message(message.chat.id, str(back), reply_markup=markup)
@@ -60,20 +65,23 @@ def handle_message(message):
 
 @bot.message_handler(func=lambda message: True, content_types=['text'])
 def echo(message):
-    markup = types.ReplyKeyboardRemove(selective=False)
-    bot.send_message(message.chat.id, 'Send /random to get random question.', reply_markup=markup)
+    bot.send_message(message.chat.id, 'Send /random or press the button above to get random question.',
+                     reply_markup=get_random_question_markup())
 
 
+def get_random_question_markup():
+    markup = types.ReplyKeyboardMarkup()
+    markup.row(types.KeyboardButton('Get random question'))
+    return markup
+
+
+bot.remove_webhook()
 # bot.polling()
 
-# Remove webhook, it fails sometimes the set if there is a previous webhook
-bot.remove_webhook()
 
-# Set webhook
 bot.set_webhook(url=WEBHOOK_URL_BASE + WEBHOOK_URL_PATH,
                 certificate=open(WEBHOOK_SSL_CERT, 'r'))
 
-# Start cherrypy server
 cherrypy.config.update({
     'server.socket_host': WEBHOOK_LISTEN,
     'server.socket_port': WEBHOOK_PORT,
